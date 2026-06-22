@@ -1,0 +1,22 @@
+# GitHub Release titles for ReleaseMgr, one per line (blank lines and # comments ignored).
+# Picked by version index (semver-sorted), wrapping if it runs out. Firmware/release-update puns.
+Patch Notes
+Bleeding Edge
+Release the Hounds
+Flash Gordon
+Version Control Freak
+Update Available
+Rolling Release
+The Upgrade Path
+Firmware Handshake
+Notes from the Field
+Tag, You're It
+Bump in the Night
+Ship It
+Hotfix Hotel
+Semver Dreams
+Changelog of Champions
+Over the Air
+Stable Genius
+Nightly Build
+The Latest and Greatest

@@ -1,59 +1,32 @@
-<style scoped>
-	.rMgrv-cardRLM {
-		display: flex !important;
-		flex-direction: column;
-		height: calc(100vh - 300px);
-	}
-
-	.rMgrv-mainCardRLM {
-		height: calc(100vh - 340px) !important;
-	}
-
-	.rMgrv-cardRLM__text {
-		flex-grow: 1;
-		overflow-y: auto;
-		overflow-x: hidden;
-	}
-
-	.probe-span {
-		border-radius: 5px;
-	}
-	.probe-span:not(:last-child) {
-		margin-right: 8px;
-	}
-	.rlMgrVchip {
-		white-space: normal !important;
-		height: auto !important;
-		text-align: center !important; 
-		min-height: 35px !important;
-	}
-</style>
 <template>
-	<v-card flat outlined class="pa-0 ma-0 rMgrv-mainCardRLM">
+	<v-card flat variant="outlined" class="pa-0 ma-0 rMgrv-mainCardRLM">
 		<v-card elevation="3" class="pa-0 ma-0 rMgrv-cardRLM">
 			<v-card-title>
-				<v-row class="pa-0 ma-0 ">
-					<v-chip class="rlMgrVchip" color="info">RN Assessment</v-chip><v-spacer></v-spacer>
-					<v-chip class="rlMgrVchip" color="red black--text">Will Never Match</v-chip>
-					<v-chip class="rlMgrVchip" color="green black--text">Will Match</v-chip>
+				<v-row class="pa-0 ma-0">
+					<v-chip class="rlMgrVchip" color="info">RN Assessment</v-chip><v-spacer />
+					<v-chip class="rlMgrVchip rmgr-nomatch-chip">Will Never Match</v-chip>
+					<v-chip class="rlMgrVchip rmgr-match-chip">Will Match</v-chip>
 				</v-row>
 			</v-card-title>
-			<v-card-text outlined class="rMgrv-cardRLM__text">
-				<v-expansion-panels v-for="(rel, i) in panelJSON2.releases" :key="i" accordion multiple focusable v-model="bExpRel[i]">
-					<v-expansion-panel expand  :key="i">
-						<v-expansion-panel-header expand-icon="mdi-sort-ascending" :color="rel.color" :title="rel.hover">{{ rel.release }}</v-expansion-panel-header>
-						<v-expansion-panel-content>
-							<v-expansion-panels v-for="(sec, j) in rel.sections" :key="j" multiple focusable v-model="bExpSec[j]">
-								<v-expansion-panel :key="j" inset>
-									<v-expansion-panel-header expand-icon="mdi-sort-ascending" :color="sec.color" :title="sec.hover" >{{ sec.section }}</v-expansion-panel-header>
-									<v-expansion-panel-content>
+			<v-card-text class="rMgrv-cardRLM__text">
+				<v-expansion-panels class="mb-5" variant="accordion" multiple>
+					<v-expansion-panel v-for="(rel, i) in panelJSON2.releases" :key="i">
+						<v-expansion-panel-title :class="rel.color" :title="rel.hover">{{ rel.release }}</v-expansion-panel-title>
+						<v-expansion-panel-text>
+							<v-expansion-panels variant="accordion" multiple>
+								<v-expansion-panel v-for="(sec, j) in rel.sections" :key="j">
+									<v-expansion-panel-title :class="sec.color" :title="sec.hover">{{ sec.section }}</v-expansion-panel-title>
+									<v-expansion-panel-text>
 										<span v-for="(content, k) in sec.lines" :key="k">
-											<span :title="content.line.hover" :key="k"><div v-html="content.line.text" :class="`${content.line.colour} pa-1`"></div></span>
+											<span :title="content.line.hover">
+												<!-- eslint-disable-next-line vue/no-v-html -->
+												<div :class="`${content.line.colour} pa-1`" v-html="content.line.text"></div>
+											</span>
 										</span>
-									</v-expansion-panel-content>
+									</v-expansion-panel-text>
 								</v-expansion-panel>
 							</v-expansion-panels>
-						</v-expansion-panel-content>
+						</v-expansion-panel-text>
 					</v-expansion-panel>
 				</v-expansion-panels>
 			</v-card-text>
@@ -61,261 +34,129 @@
 	</v-card>
 </template>
 
-<script lang="ts">
+<script setup lang="ts">
+import { onMounted, ref, watch } from "vue";
 
-import Vue from "vue";
-import store from "@/store";
-import * as tempENLang from './en';
+import { useMachineStore } from "@/stores/machine";
 
-export default Vue.extend({
-	props: {
-		rnAdminJSON: {
-			type: Object
-		},
-		rMgrData:{
-			type: Object
-		},
-		selectedTag: String,
-		sRNOvrRd: String
-    },
-	
-	computed: {
-		systemDirectory(): string {
-			return store.state.machine.model.directories.system;
-		},
-		systemCurrIP(): any {
-			return store.state.machine.model.network.interfaces[0].actualIP;
-		},
-		systemDSFVerStr(): any {
-			//return store.state.machine.model.state.dsfVersion;
-			try{return store.state.machine.model.sbc;}catch{return null}
-		},
-		darkTheme(): any {
-			return store.state.settings.darkTheme;
-		}, 
-		tmpLang(): any {
-			return tempENLang.tmpLangObj().plugin.ReleaseMgr;
-		},
-		rnHWLookup(): any{
-			return this.rMgrData.boards;
-		},
-		bIsSBC(): boolean{
-			if(this.systemDSFVerStr !== null && this.systemDSFVerStr !== ''){
-				return true;
-			}else{
-				return false;
+/* eslint-disable @typescript-eslint/no-explicit-any */
+
+const props = defineProps<{ rnAdminJSON?: any; rMgrData?: any; selectedTag?: string; sRNOvrRd?: string }>();
+
+const machineStore = useMachineStore();
+
+const confGLineMatchCol = "rmgr-confg-line";
+const gitOwnerNameDuet = "Duet3D";
+const gitRepoNameDuet = "RepRapFirmware";
+
+const panelJSON2 = ref<any>({ releases: [] });
+
+function bIsSBC(): boolean {
+	try { return !!(machineStore.model as any).sbc; } catch { return false; }
+}
+function rnHWLookup(): any { return props.rMgrData?.boards ?? []; }
+
+function filterDuetRNJSON(): any {
+	const rn = props.rnAdminJSON;
+	if (rn.class === "rn" && rn.releases.length > 0) {
+		const tmpJSON: any = { releases: [], relType: rn.relType, selTag: rn.selTag, gUName: rn.gUName, class: rn.class };
+		if (rn.relType === "Beta" || rn.relType === "RC") {
+			let trmTag = rn.selTag.slice(0, rn.selTag.toLowerCase().indexOf(rn.relType.toLowerCase()) + rn.relType.length);
+			trmTag = trmTag.toLowerCase().replace("rc", "").replace("beta", "");
+			const tP1: any = { releases: [] };
+			for (const rel of rn.releases) {
+				if (rel.release.toLowerCase().includes(`reprapfirmware ${trmTag}`)) {
+					tP1.releases.push(rel);
+				}
 			}
-		},
-		confGLineMatchCol(): string{
-			if(!this.darkTheme){
-				return "red lighten-3";
-			}else{
-				return "red lighten-3 black--text"
-			}
-		}		
-	},
-
-	data () {
-		return {
-			bExpRel: [[0]] as any,
-			bExpSec: [[0]] as any,
-			currBSN: null as any,
-			panelJSON2: {releases:[]} as any,
-			gitOwnerNameDuet: 'Duet3D',
-			gitOwnerNameGloomy: 'gloomyandy',
-			gitRepoNameDuet: "RepRapFirmware",
-			gitSBCRepoNameDuet: "DuetSoftwareFramework", 
-			gitRepoNameGloomy: "RepRapFirmware",
-			gitDWCRepoNameDuet: "DuetWebControl",
-			confGText: null as any			
+			tmpJSON.releases = tP1.releases;
+			return tmpJSON;
 		}
-	},
+		const tStr1 = props.sRNOvrRd ? `RepRapFirmware ${props.sRNOvrRd}` : `RepRapFirmware ${rn.selTag}`;
+		tmpJSON.releases = rn.releases.filter((item: { release: string }) => item.release.includes(tStr1));
+		return tmpJSON;
+	}
+	return { releases: [] };
+}
 
-	mounted(){
-		this.startUp();
-	},
-
-	methods: {
-		async startUp(){
-			if(this.rnAdminJSON){
-				if(this.rnAdminJSON.gUName == this.gitOwnerNameDuet && this.rnAdminJSON.gRName == this.gitRepoNameDuet){
-					this.panelJSON2 = this.filterDuetRNJSON();
-					this.highlightRN2();
+function highlightRN2(): void {
+	const statSNArr = rnHWLookup();
+	for (const currRel of panelJSON2.value.releases) {
+		for (const currSec of currRel.sections) {
+			for (const lineWrap of currSec.lines) {
+				const currLine = lineWrap.line;
+				if (currLine.text.includes("<pre><code>")) {
+					currLine.text = currLine.text.replace("<pre><code>", "<ul><li><code>");
+					currLine.text = currLine.text.replace("</code></pre>", "</code></li></ul>");
 				}
-			}
-		}, 
-
-		reFormatCodeBlockLine(){
-			let rel: any = 0;
-			for(rel in this.panelJSON2.releases){
-				let currRel = this.panelJSON2.releases[rel];
-				let sec: any = 0;
-				for(sec in currRel.sections){
-					//sections
-					let currSec = currRel.sections[sec]
-					let lin: any = 0;
-					for(lin in currSec.lines){
-						//lines
-						let currLine = currSec.lines[lin].line;
-						if(currLine.text.includes("<pre><code>")){
-							//fix word wrapping
-							currLine.text = currLine.text.replace('<pre><code>', '<ul><li><code>');
-							currLine.text = currLine.text.replace('</code></pre>', '</code></li></ul>')
-						}
-					}
-				}
-			}
-		},
-
-		filterDuetRNJSON(){
-			if(this.rnAdminJSON.class == "rn" && this.rnAdminJSON.releases.length > 0){
-				//Filtering for Duet ReleaseNotes
-				let tmpJSON: any = {releases: [], relType: this.rnAdminJSON.relType, selTag: this.rnAdminJSON.selTag, gUName: this.rnAdminJSON.gUName, class: this.rnAdminJSON.class};
-				if(this.rnAdminJSON.relType == "Beta" || this.rnAdminJSON.relType == "RC"){
-					//filter the notes to the relevant sections (cumlative so if beta3 then include beta2 & beta1) based on selected release tag
-					let trmTag = this.rnAdminJSON.selTag.slice(0, this.rnAdminJSON.selTag.toLowerCase().indexOf(this.rnAdminJSON.relType.toLowerCase())+this.rnAdminJSON.relType.length);
-					trmTag = trmTag.toLowerCase().replace('rc', '')
-					trmTag = trmTag.toLowerCase().replace('beta', '')
-					let tP1: any = {releases: []};
-					let rnc: any = 0;
-					for(rnc in this.rnAdminJSON.releases){
-						if(this.rnAdminJSON.releases[rnc].release.toLowerCase().includes(`reprapfirmware ${trmTag}`)){				
-								tP1.releases.push(this.rnAdminJSON.releases[rnc]);
-						}							 
-					}
-					tmpJSON.releases = tP1.releases;
-					return tmpJSON
-				}else{
-					//filter to selected release tag
-					let tStr1 = `RepRapFirmware ${this.rnAdminJSON.selTag}`
-					if(this.sRNOvrRd) {
-						tStr1 = `RepRapFirmware ${this.sRNOvrRd}`
-					}
-					let tO1 = this.rnAdminJSON.releases.filter((item: { release: string; }) => (item.release.includes(tStr1)));
-					tmpJSON.releases = tO1;
-					return tmpJSON;
-				}
-			}
-		},
-
-		highlightRN2(){
-			//parses the release notes and applies colors/highlights according to the mactching criteria 
-				let rel: any = 0;
-				let sec: any = 0;
-				let lin: any = 0;
-				let statSNArr = this.rnHWLookup;
-				let currRel = null;
-				let currSec = null;
-				let currLine = null;
-				let usn: any = 0;
-				let rnhw: any = 0;
-				let rnhws: any = 0;
-				let hwStr: any = "";
-				let bHWMatch = false;
-				let hwSNMatchArr = null;
+				const hwStr: any = currLine.text.match(/\[[^\]]*]/g);
+				if (!hwStr) { continue; }
 				let bSkipped = false;
-				//loop through the json (nested to allow reverse traversal)
-				for(rel in this.panelJSON2.releases){
-					currRel = this.panelJSON2.releases[rel];
-					for(sec in currRel.sections){
-						//sections
-						currSec = currRel.sections[sec]
-						for(lin in currSec.lines){
-							//lines
-							currLine = currSec.lines[lin].line;
-							if(currLine.text.includes("<pre><code>")){
-								//fix word wrapping
-								currLine.text = currLine.text.replace('<pre><code>', '<ul><li><code>');
-								currLine.text = currLine.text.replace('</code></pre>', '</code></li></ul>')
-							}
-							//HW matching
-							usn = 0;
-							//check if this is a hw line in the RN defined by '[xxx]'
-							hwStr = "";
-							//Look for instances of '[xxx]' in the RN (returns null if no matches)
-							hwStr = currLine.text.match(/\[[^\]]*]/g)
-							if(hwStr){
-								//this is HW line process each instance of [x][y][z]
-								rnhw = 0;
-								for(rnhw in hwStr){
-									//check for empty brackets and skip
-									if(hwStr[rnhw].length <= 3 ){
-										bSkipped = true; 
-										continue;
-									}else{
-										bSkipped = false;
-									}
-									//add checks for combination hw [x + y + z] (allways returns an array)
-									//never match a rnName that contains 'standalone' and SBC is true
-									if(hwStr[rnhw].toLowerCase().includes("in standalone mode") && this.bIsSBC){
-										continue;
-									}
-									//strip "[]"
-									let tmpHWStr = hwStr[rnhw].replace('[', '');
-									tmpHWStr = tmpHWStr.replace(']', '');
-									if(tmpHWStr.toLowerCase().includes("in standalone mode") && !this.bIsSBC){
-										//strip 'in standalone mode' so matching still works
-										tmpHWStr = tmpHWStr.toLowerCase().replaceAll(' in standalone mode', '');
-									}
-									let rnHWArr = tmpHWStr.split(" + ")
-									rnhws = 0
-									//loop though each combination element
-									for(rnhws in rnHWArr){
-										//when this look exits if bHWMatch is true then the whole '[xxx]' is a match, partial matches will return false
-										bHWMatch = false;
-										usn=0;
-										//check if string contains ' - ' and remove ' - ' + all strip other right characters
-										if(rnHWArr[rnhws].toLowerCase().includes(" - ")){
-											let tmpInx: number = (rnHWArr[rnhws].indexOf(" - "));
-											rnHWArr[rnhws] = rnHWArr[rnhws].substring(0, tmpInx)
-										}
-										//loop through each board shortName in the OM
-										for(usn in statSNArr){
-											//get the array of shortNames groups from the data maintained on github
-											hwSNMatchArr = this.rnHWLookup.filter((item: { shortName: string; }) => item.shortName == statSNArr[usn].shortName);
-											if(hwSNMatchArr.length !== 0){
-												//we have found a match of short name now check each group name against the combination elelement
-												let isMatchArr = hwSNMatchArr[0].rnNames.filter((item: any) => item.toLowerCase() == rnHWArr[rnhws].toLowerCase())
-												if(isMatchArr.length !== 0){
-													bHWMatch = true;
-												}												
-											}
-											//if we have already found a match we can move on else end as its an AND check condition
-											if(bHWMatch){break;}
-										}
-										//if we have already found a match we can move on else end as its an AND check condition
-										if(!bHWMatch){break}
-									}
-									if(bHWMatch && !bSkipped){
-										currLine.text = currLine.text.replace(hwStr[rnhw], `<span class="green--text">${hwStr[rnhw]}</span>`)
-										currLine.hwMatch = true;
-										bSkipped = false;
-										currLine.hwHover = "";										
-									}else if (!bHWMatch && !bSkipped){
-										currLine.text = currLine.text.replace(hwStr[rnhw], `<span class="red--text">${hwStr[rnhw]}</span>`)
-										currSec.color = `${this.confGLineMatchCol}`;
-										currRel.color = `${this.confGLineMatchCol}`;
-										currLine.hwMatch = false;
-										bSkipped = false;
-										currLine.hwHover = "";									
-									}									
-								}
-							}
-						}
+				for (const hw of hwStr) {
+					if (hw.length <= 3) { bSkipped = true; continue; } else { bSkipped = false; }
+					if (hw.toLowerCase().includes("in standalone mode") && bIsSBC()) { continue; }
+					let tmpHWStr = hw.replace("[", "").replace("]", "");
+					if (tmpHWStr.toLowerCase().includes("in standalone mode") && !bIsSBC()) {
+						tmpHWStr = tmpHWStr.toLowerCase().replaceAll(" in standalone mode", "");
 					}
-				}	
-		}		
-	},
-	watch: {
-		selectedTag() {
-			this.startUp();
-		},
-		rnAdminJSON(){
-			this.startUp();
-		},
-		darkTheme(){
-			this.startUp();
+					const rnHWArr = tmpHWStr.split(" + ");
+					let bHWMatch = false;
+					for (let part of rnHWArr) {
+						bHWMatch = false;
+						if (part.toLowerCase().includes(" - ")) {
+							part = part.substring(0, part.indexOf(" - "));
+						}
+						for (const sn of statSNArr) {
+							const hwSNMatchArr = rnHWLookup().filter((item: { shortName: string }) => item.shortName === sn.shortName);
+							if (hwSNMatchArr.length !== 0) {
+								const isMatchArr = hwSNMatchArr[0].rnNames.filter((item: any) => item.toLowerCase() === part.toLowerCase());
+								if (isMatchArr.length !== 0) { bHWMatch = true; }
+							}
+							if (bHWMatch) { break; }
+						}
+						if (!bHWMatch) { break; }
+					}
+					if (bHWMatch && !bSkipped) {
+						currLine.text = currLine.text.replace(hw, `<span class="rmgr-match">${hw}</span>`);
+						currLine.hwMatch = true;
+						currLine.hwHover = "";
+					} else if (!bHWMatch && !bSkipped) {
+						currLine.text = currLine.text.replace(hw, `<span class="rmgr-nomatch">${hw}</span>`);
+						currSec.color = confGLineMatchCol;
+						currRel.color = confGLineMatchCol;
+						currLine.hwMatch = false;
+						currLine.hwHover = "";
+					}
+				}
+			}
 		}
 	}
-});
+}
+
+function startUp(): void {
+	const rn = props.rnAdminJSON;
+	if (rn && rn.gUName === gitOwnerNameDuet && rn.gRName === gitRepoNameDuet) {
+		panelJSON2.value = filterDuetRNJSON();
+		highlightRN2();
+	}
+}
+
+onMounted(startUp);
+watch([() => props.rnAdminJSON, () => props.selectedTag, () => props.sRNOvrRd], startUp);
 </script>
+
+<style scoped>
+.rMgrv-cardRLM { display: flex !important; flex-direction: column; height: calc(100vh - 300px); }
+.rMgrv-mainCardRLM { height: calc(100vh - 340px) !important; }
+.rMgrv-cardRLM__text { flex-grow: 1; overflow-y: auto; overflow-x: hidden; }
+.rlMgrVchip { white-space: normal !important; height: auto !important; text-align: center !important; min-height: 35px !important; }
+.rmgr-match-chip { background-color: #4caf50; color: #000; }
+.rmgr-nomatch-chip { background-color: #f44336; color: #000; }
+</style>
+
+<!-- Global highlight classes for v-html content (scoped CSS can't reach injected markup). -->
+<style>
+.rmgr-confg-line { background-color: #e57373; color: #000; }
+.rmgr-match { color: #2e7d32; font-weight: 600; }
+.rmgr-nomatch { color: #c62828; font-weight: 600; }
+</style>

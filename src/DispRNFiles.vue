@@ -1,110 +1,49 @@
-<style>
-	.rMgrv-cardRNFiles {
-		display: flex !important;
-		flex-direction: column;
-		height: calc((100vh - 340px)/2);
-	}
-
-	.rMgrv-mainCardRLM {
-		height: calc(100vh - 240px);
-	}
-
-	.rMgrv-cardRNFiles__text {
-		flex-grow: 1;
-		overflow-y: auto;
-		overflow-x: hidden;
-	}
-
-	.probe-span {
-		border-radius: 5px;
-	}
-	.probe-span:not(:last-child) {
-		margin-right: 8px;
-	}
-</style>
 <template>
-	<v-card outlined elevation="3" class="rMgrv-cardRNFiles pa-0 ma-0">
-		<v-card-title>
-			{{riJSON.name}} Files
-		</v-card-title>
+	<v-card variant="outlined" elevation="3" class="rMgrv-cardRNFiles pa-0 ma-0">
+		<v-card-title>{{ riJSON?.name }} Files</v-card-title>
 		<v-card-text class="rMgrv-cardRNFiles__text">
-			<v-overlay :absolute="true" :opacity="0.5" :value="bSOvrlay" align="center" justify="center" >
-				<v-chip>{{tmpLang.filesNotAvail}}</v-chip>
-				<v-btn rounded medium class="mr-2" style="cursor: pointer" color="info" @click="bSOvrlay = !bSOvrlay">
-					{{tmpLang.filesNotAvail2}}
+			<v-overlay v-model="bSOvrlay" contained class="align-center justify-center text-center">
+				<v-chip>{{ t("filesNotAvail") }}</v-chip>
+				<v-btn rounded class="mr-2 mt-2" color="info" @click="bSOvrlay = false">
+					{{ t("filesNotAvail2") }}
 				</v-btn>
 			</v-overlay>
-			<span v-for="(fileLink, i) in riJSON.assets" :key="i">
-				<span><a :title="fileLink.browser_download_url" @click="assetClick(fileLink.browser_download_url)"  style="color: green">{{fileLink.name}}</a></span><br>
-			</span>			
+			<span v-for="(fileLink, i) in riJSON?.assets ?? []" :key="i">
+				<a :title="fileLink.browser_download_url" style="color: green; cursor: pointer"
+				   @click="assetClick(fileLink.browser_download_url)">{{ fileLink.name }}</a><br>
+			</span>
 		</v-card-text>
 	</v-card>
 </template>
 
-<script lang="ts">
+<script setup lang="ts">
+import { ref, watch } from "vue";
 
-import Vue from "vue";
-import store from "@/store";
-import { isPrinting } from "@/utils/enums";
-import * as tempENLang from './en';
+import i18n from "@/i18n";
 
-export default Vue.extend({
-	props: {
-		riJSON: {
-			type: Object
-		},
-		selectedTag: String,
-		bShowOverlay: Boolean
-    },
+interface ReleaseLike { name?: string; assets?: Array<{ name: string; browser_download_url: string }> }
 
-	computed: {
-		systemDirectory(): string {
-			return store.state.machine.model.directories.system;
-		},
-		systemCurrIP(): any {
-			return store.state.machine.model.network.interfaces[0].actualIP;
-		},
-		systemDSFVerStr(): any {
-			//return store.state.machine.model.state.dsfVersion;
-			try{return store.state.machine.model.sbc;}catch{return null}
-		},
-		darkTheme(): any {
-			return store.state.settings.darkTheme;
-		}, 
-		tmpLang(): any {
-			return tempENLang.tmpLangObj().plugin.ReleaseMgr;
-		},
-		isPrinting(): boolean {
-			return isPrinting(store.state.machine.model.state.status);
-		},		
-	},
+const props = defineProps<{ riJSON?: ReleaseLike; selectedTag?: string; bShowOverlay?: boolean }>();
 
-	data () {
-		return {
-			bExpRel: [[0]] as any,
-			bExpSec: [[0]] as any,
-			currBSN: null,
-			panelJSON: {releases:[]} as any,
-			gitOwnerNameDuet: 'Duet3D',
-			gitOwnerNameGloomy: 'gloomyandy',
-			panelHTML: "",
-			bSOvrlay: false			
-		}
-	},
+const t = (key: string) => i18n.global.t(`plugins.releaseMgr.${key}`);
 
-	mounted(){
-		this.startUp();
-	},
+const bSOvrlay = ref(!!props.bShowOverlay);
+watch(() => props.bShowOverlay, (v) => { bSOvrlay.value = !!v; });
 
-	methods: {
-		startUp(){
-			this.bSOvrlay = this.bShowOverlay;
-		}, 
-
-		assetClick(tmpURL: string){
-			window.open(tmpURL, '_blank');
-		},
-		
-	}
-});
+function assetClick(url: string): void {
+	window.open(url, "_blank");
+}
 </script>
+
+<style scoped>
+.rMgrv-cardRNFiles {
+	display: flex !important;
+	flex-direction: column;
+	height: calc((100vh - 340px) / 2);
+}
+.rMgrv-cardRNFiles__text {
+	flex-grow: 1;
+	overflow-y: auto;
+	overflow-x: hidden;
+}
+</style>

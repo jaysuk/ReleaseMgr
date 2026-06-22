@@ -1,0 +1,16 @@
+{
+	"id": "ReleaseMgr",
+	"name": "ReleaseMgr",
+	"author": "Minty Trebor (3.7 port by James Skitt)",
+	"version": "2.0.0",
+	"license": "GPL-3.0-or-later",
+	"homepage": "https://github.com/jaysuk/ReleaseMgr",
+	"dwcVersion": "auto-major",
+	"tags": [
+		"firmware",
+		"release notes",
+		"rrf",
+		"dwc",
+		"update"
+	]
+}
