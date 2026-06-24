@@ -60,10 +60,22 @@
 									<v-btn size="small" color="info" class="ma-1 mr-6" v-bind="props" icon="mdi-cog" @click="bShowEditGlobalSettingsDialog = true" />
 								</template>
 							</v-tooltip>
+							<v-tooltip location="top" text="About, updates & diagnostics">
+								<template #activator="{ props }">
+									<v-btn size="small" color="info" class="ma-1 mr-6" v-bind="props" icon="mdi-information-outline" @click="aboutOpen = true" />
+								</template>
+							</v-tooltip>
 						</v-col>
 					</v-row>
 				</v-card-text>
 			</v-card>
+
+			<AboutDialog v-model="aboutOpen" plugin-id="ReleaseMgr" title="Release Manager"
+				:description="aboutDescription" :model="machineStore.model"
+				repo="https://github.com/jaysuk/ReleaseMgr"
+				:update-available="updateState?.updateAvailable ?? false" :latest-version="updateState?.latestVersion"
+				:checking="checking" :applying="applying" :pending-reload="pendingReload" :auto-check="autoCheck"
+				@check-update="onCheckUpdate" @apply-update="applyUpdateNow" @toggle-auto-check="onToggleAutoCheck" />
 
 			<!-- Release views -->
 			<v-card v-if="currView" width="100%" class="pa-0 ma-0 mb-2">
@@ -204,10 +216,22 @@ import { getByGitAPI, getByGitFileRaw, getByGitWikiRaw } from "./model/git";
 import { loadSettings, saveSettings } from "./model/settings";
 import { DATA_OWNER, DATA_REPO } from "./model/constants";
 
+import { AboutDialog } from "dwc-plugin-runtime";
+import {
+	applying, applyUpdateNow, checking, pendingReload, runUpdateCheck,
+	setUpdateChecksEnabled, updateChecksEnabled, updateState,
+} from "./model/updateCheck";
+
 /* eslint-disable @typescript-eslint/no-explicit-any */
 
 const machineStore = useMachineStore();
 const t = (key: string) => i18n.global.t(`plugins.releaseMgr.${key}`);
+
+const aboutOpen = ref(false);
+const autoCheck = ref(updateChecksEnabled());
+const aboutDescription = "Highlights the parts of an RRF / DWC / DSF release that matter for your config and connected hardware.";
+function onCheckUpdate(): void { void runUpdateCheck({ force: true }); }
+function onToggleAutoCheck(v: boolean): void { autoCheck.value = v; setUpdateChecksEnabled(v); }
 
 // GitHub coordinates.
 const gitOwnerNameDuet = "Duet3D";

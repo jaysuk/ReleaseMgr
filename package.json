@@ -1,6 +1,6 @@
 {
   "name": "release-mgr",
-  "version": "2.0.0",
+  "version": "2.0.1",
   "description": "Highlights RRF / DWC / DSF / Team Gloomy release-note changes that may affect your config.g and hardware — a Duet Web Control 3.7 plugin.",
   "private": true,
   "license": "GPL-3.0-or-later",
@@ -15,7 +15,7 @@
     "release": "node scripts/release.mjs"
   },
   "dependencies": {
-    "dwc-plugin-runtime": "github:jaysuk/dwc-plugin-runtime#v0.7.0",
+    "dwc-plugin-runtime": "github:jaysuk/dwc-plugin-runtime#v0.8.2",
     "marked": "^14.1.2"
   },
   "devDependencies": {
